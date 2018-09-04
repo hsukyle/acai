@@ -103,6 +103,13 @@ def _load_celeba():
     train_set = {'images': images, 'labels': np.zeros(len(images), int)}
     return dict(train=train_set)
 
+def _load_celeba84():
+    splits = collections.OrderedDict()
+    for split in ['train', 'val', 'test']:
+        data = np.load('./data/celeba/cropped/Img_resized84_cache/
+        images, labels = data['X'], data['Y']
+        splits[split] = {'images': _encode_png(images), 'labels': labels}
+    return splits
 
 def _load_mnist():
     def _read32(data):
@@ -135,9 +142,30 @@ def _load_mnist():
                 assert _read32(data) == 2049
                 n_labels = _read32(data)
                 labels = np.frombuffer(data.read(n_labels), dtype=np.uint8)
+        if split == 'train':
+            num_val = 5000
+            splits['train'] = {'images': _encode_png(images[:-num_val]), 'labels': labels[:-num_val]}
+            splits['val'] = {'images': _encode_png(images[-num_val:]), 'labels': labels[-num_val:]}
+        else:
+            splits[split] = {'images': _encode_png(images), 'labels': labels}
+    return splits
+
+def _load_omniglot():
+    splits = collections.OrderedDict()
+    for split in ['train', 'val', 'test']:
+        data = np.load('./data/bigan_encodings/omniglot.u-200_{}.npz'.format(split))
+        images, labels = data['X'], data['Y']
+        images = np.transpose(images, [0, 2, 3, 1])
         splits[split] = {'images': _encode_png(images), 'labels': labels}
     return splits
 
+def _load_miniimagenet():
+    splits = collections.OrderedDict()
+    for split in ['train', 'val', 'test']:
+        data = np.load('./data/bigan_encodings/miniimagenet.u-200_{}.npz'.format(split))
+        images, labels = data['X'], data['Y']
+        splits[split] = {'images': _encode_png(images), 'labels': labels}
+    return splits
 
 def _int64_feature(value):
     return tf.train.Feature(int64_list=tf.train.Int64List(value=[value]))
@@ -160,10 +188,12 @@ def _save_as_tfrecord(data, filename):
 
 
 LOADERS = [
-    ('mnist', _load_mnist),
+    # ('mnist', _load_mnist),
+    # ('omniglot', _load_omniglot)
+    # ('miniimagenet', _load_miniimagenet)
     ('cifar10', _load_cifar10),
-    ('svhn', _load_svhn),
-    ('celeba', _load_celeba)
+    # ('svhn', _load_svhn),
+    # ('celeba', _load_celeba)
 ]
 
 if __name__ == '__main__':

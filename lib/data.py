@@ -29,19 +29,20 @@ import random
 
 import numpy as np
 import tensorflow as tf
+import ipdb
 
 _DATA_CACHE = None
 
-DATA_DIR = os.environ['AE_DATA']
-
+DATA_DIR = './data/acai'
 
 class DataSet(object):
 
-    def __init__(self, name, train, test, train_once, height, width, colors,
+    def __init__(self, name, train, val, test, train_once, height, width, colors,
                  nclass):
         self.name = name
         self.train = train
         self.train_once = train_once
+        self.val = val
         self.test = test
         self.height = height
         self.width = width
@@ -50,23 +51,45 @@ class DataSet(object):
 
 
 def get_dataset(dataset_name, params):
-    train, height, width, colors = _DATASETS[dataset_name + '_train'](
-        batch_size=params['batch_size'])
-    test = _DATASETS[dataset_name + '_test'](batch_size=1)[0]
-    train = train.map(lambda v: dict(x=v['x'],
-                                     label=tf.one_hot(v['label'],
-                                                      _NCLASS[dataset_name])))
-    test = test.map(lambda v: dict(x=v['x'],
-                                   label=tf.one_hot(v['label'],
-                                                    _NCLASS[dataset_name])))
-    if dataset_name + '_train_once' in _DATASETS:
-        train_once = _DATASETS[dataset_name + '_train_once'](batch_size=1)[0]
-        train_once = train_once.map(lambda v: dict(
-            x=v['x'], label=tf.one_hot(v['label'], _NCLASS[dataset_name])))
-    else:
-        train_once = None
-    return DataSet(dataset_name, train, test, train_once, height, width,
-                   colors, _NCLASS[dataset_name])
+    if dataset_name == 'mnist32':   # one-hot labels for downstream evaluation, etc. during AE training
+        train, height, width, colors = _DATASETS[dataset_name + '_train'](
+            batch_size=params['batch_size'])
+        val = _DATASETS[dataset_name + '_val'](batch_size=1)[0]
+        test = _DATASETS[dataset_name + '_test'](batch_size=1)[0]
+        train = train.map(lambda v: dict(x=v['x'],
+                                         label=tf.one_hot(v['label'],
+                                                          _NCLASS[dataset_name]),
+                                         x_orig=v['x_orig']))
+        val = val.map(lambda v: dict(x=v['x'], label=tf.one_hot(v['label'], _NCLASS[dataset_name]),
+                                     x_orig=v['x_orig']))
+        test = test.map(lambda v: dict(x=v['x'],
+                                       label=tf.one_hot(v['label'],
+                                                        _NCLASS[dataset_name]),
+                                       x_orig=v['x_orig']))
+        if dataset_name + '_train_once' in _DATASETS:
+            train_once = _DATASETS[dataset_name + '_train_once'](batch_size=1)[0]
+            train_once = train_once.map(lambda v: dict(
+                x=v['x'], label=tf.one_hot(v['label'], _NCLASS[dataset_name]), x_orig=v['x_orig']))
+        else:
+            train_once = None
+        return DataSet(dataset_name, train, val, test, train_once, height, width,
+                       colors, _NCLASS[dataset_name])
+    else:   # labels are information we'd like to keep track of, not used
+        train, height, width, colors = _DATASETS[dataset_name + '_train'](
+            batch_size=params['batch_size'])
+        val = _DATASETS[dataset_name + '_val'](batch_size=1)[0]
+        test = _DATASETS[dataset_name + '_test'](batch_size=1)[0]
+        train = train.map(lambda v: dict(x=v['x'], label=v['label'], x_orig=v['x_orig']))
+        val = val.map(lambda v: dict(x=v['x'], label=v['label'], x_orig=v['x_orig']))
+        test = test.map(lambda v: dict(x=v['x'], label=v['label'], x_orig=v['x_orig']))
+        if dataset_name + '_train_once' in _DATASETS:
+            train_once = _DATASETS[dataset_name + '_train_once'](batch_size=1)[0]
+            train_once = train_once.map(lambda v: dict(x=v['x'], label=v['label'], x_orig=v['x_orig']))
+        else:
+            train_once = None
+
+        return DataSet(dataset_name, train, val, test, train_once, height, width,
+                       colors, _NCLASS[dataset_name])
 
 
 def draw_line(angle, height, width, w=2.):
@@ -136,10 +159,10 @@ def _parser_all(serialized_example):
         serialized_example,
         features={'image': tf.FixedLenFeature([], tf.string),
                   'label': tf.FixedLenFeature([], tf.int64)})
-    image = tf.image.decode_image(features['image'])
-    image = tf.cast(image, tf.float32) * (2.0 / 255) - 1.0
+    image_orig = tf.image.decode_image(features['image'])
+    image = tf.cast(image_orig, tf.float32) * (2.0 / 255) - 1.0
     label = features['label']
-    return image, label
+    return image, label, image_orig
 
 
 def input_fn_record(record_parse_fn,
@@ -199,30 +222,31 @@ def input_fn_record(record_parse_fn,
     delta = [0, 0]
     if sum(crop):
         dataset = dataset.map(
-            lambda x, y: (x[crop[0]:-crop[0], crop[1]:-crop[1]], y))
+            lambda x, y, x_orig: (x[crop[0]:-crop[0], crop[1]:-crop[1]], y, x_orig))
         delta[0] -= 2 * crop[0]
         delta[1] -= 2 * crop[1]
     if sum(pad):
         padding = [[pad[0]] * 2, [pad[1]] * 2, [0] * 2]
         dataset = dataset.map(
-            lambda x, y: (tf.pad(x, padding, constant_values=-1.), y))
+            lambda x, y, x_orig: (tf.pad(x, padding, constant_values=-1.), y, x_orig))
         delta[0] += 2 * crop[0]
         delta[1] += 2 * crop[1]
+
     if resize[0] - delta[0] != size[0] or resize[1] - delta[1] != size[1]:
         dataset = dataset.map(
-            lambda x, y: (tf.image.resize_bicubic([x], list(resize))[0], y), 4)
+            lambda x, y, x_orig: (tf.image.resize_bicubic([x], list(resize))[0], y, x_orig), 4)
     if shuffle:
         dataset = dataset.shuffle(shuffle)
     if random_flip_x:
         dataset = dataset.map(
-            lambda x, y: (tf.image.random_flip_left_right(x), y), 4)
+            lambda x, y, x_orig: (tf.image.random_flip_left_right(x), y, x_orig), 4)
     if random_shift_x or random_shift_y:
-        dataset = dataset.map(lambda x, y: (random_shift(x), y), 4)
+        dataset = dataset.map(lambda x, y, x_orig: (random_shift(x), y, x_orig), 4)
     dataset = dataset.batch(batch_size)
     dataset = dataset.map(
-        lambda x, y: dict(
+        lambda x, y, x_orig: dict(
             x=tf.reshape(x, [batch_size] + list(resize) + list(size[-1:])),
-            label=y))
+            label=y, x_orig=x_orig))
     dataset = dataset.prefetch(4)  # Prefetch a few batches.
     return dataset, resize[0] or size[0], resize[1] or size[1], size[2]
 
@@ -233,6 +257,9 @@ _NCLASS = {
     'lines32': 10,
     'mnist32': 10,
     'svhn32': 10,
+    'omniglot32': -1,
+    'miniimagenet64': -1,
+    'miniimagenet32': -1,
 }
 
 _DATASETS = {
@@ -279,6 +306,139 @@ _DATASETS = {
             repeat=False,
             size=(32, 32, 3),
             resize=(32, 32)),
+    'cifar10_val':
+        functools.partial(
+            input_fn_record,
+            _parser_all,
+            [os.path.join(DATA_DIR, 'cifar10-test.tfrecord')],
+            shuffle=False,
+            repeat=False,
+            size=(32, 32, 3),
+            resize=(32, 32)),
+    'miniimagenet32_train':
+        functools.partial(
+            input_fn_record,
+            _parser_all,
+            [os.path.join(DATA_DIR, 'miniimagenet-train.tfrecord')],
+            size=(84, 84, 3),
+            resize=(32, 32)),
+    'miniimagenet32_test':
+        functools.partial(
+            input_fn_record,
+            _parser_all,
+            [os.path.join(DATA_DIR, 'miniimagenet-test.tfrecord')],
+            shuffle=False,
+            repeat=False,
+            size=(84, 84, 3),
+            resize=(32, 32)),
+    'miniimagenet32_val':
+        functools.partial(
+            input_fn_record,
+            _parser_all,
+            [os.path.join(DATA_DIR, 'miniimagenet-val.tfrecord')],
+            shuffle=False,
+            repeat=False,
+            size=(84, 84, 3),
+            resize=(32, 32)),
+    'miniimagenet32_train_once':
+        functools.partial(
+            input_fn_record,
+            _parser_all,
+            [os.path.join(DATA_DIR, 'miniimagenet-train.tfrecord')],
+            shuffle=False,
+            repeat=False,
+            size=(84, 84, 3),
+            resize=(32, 32)),
+    'miniimagenet64_train_orig':
+        functools.partial(
+            input_fn_record,
+            _parser_all,
+            [os.path.join(DATA_DIR, 'miniimagenet-train.tfrecord')],
+            repeat=False,
+            shuffle=False,
+            size=(84, 84, 3),
+            resize=(84, 84)),
+    'miniimagenet64_test_orig':
+        functools.partial(
+            input_fn_record,
+            _parser_all,
+            [os.path.join(DATA_DIR, 'miniimagenet-test.tfrecord')],
+            shuffle=False,
+            repeat=False,
+            size=(84, 84, 3),
+            resize=(84, 84)),
+    'miniimagenet64_val_orig':
+        functools.partial(
+            input_fn_record,
+            _parser_all,
+            [os.path.join(DATA_DIR, 'miniimagenet-val.tfrecord')],
+            shuffle=False,
+            repeat=False,
+            size=(84, 84, 3),
+            resize=(84, 84)),
+    'miniimagenet64_train':
+        functools.partial(
+            input_fn_record,
+            _parser_all,
+            [os.path.join(DATA_DIR, 'miniimagenet-train.tfrecord')],
+            size=(84, 84, 3),
+            resize=(64, 64)),
+    'miniimagenet64_test':
+        functools.partial(
+            input_fn_record,
+            _parser_all,
+            [os.path.join(DATA_DIR, 'miniimagenet-train.tfrecord')],
+            shuffle=False,
+            repeat=False,
+            size=(84, 84, 3),
+            resize=(64, 64)),
+    'miniimagenet64_val':
+        functools.partial(
+            input_fn_record,
+            _parser_all,
+            [os.path.join(DATA_DIR, 'miniimagenet-train.tfrecord')],
+            shuffle=False,
+            repeat=False,
+            size=(84, 84, 3),
+            resize=(64, 64)),
+    'omniglot32_train_once':
+        functools.partial(
+            input_fn_record,
+            _parser_all,
+            [os.path.join(DATA_DIR, 'omniglot-train.tfrecord')],
+            repeat=False,
+            shuffle=False,
+            size=(28, 28, 1),
+            pad=(2, 2),
+            resize=(32, 32)),
+    'omniglot32_train':
+        functools.partial(
+            input_fn_record,
+            _parser_all,
+            [os.path.join(DATA_DIR, 'omniglot-train.tfrecord')],
+            size=(28, 28, 1),
+            pad=(2, 2),
+            resize=(32, 32)),
+    'omniglot32_test':
+        functools.partial(
+            input_fn_record,
+            _parser_all,
+            [os.path.join(DATA_DIR, 'omniglot-test.tfrecord')],
+            shuffle=False,
+            repeat=False,
+            size=(28, 28, 1),
+            pad=(2, 2),
+            resize=(32, 32)),
+    'omniglot32_val':
+        functools.partial(
+            input_fn_record,
+            _parser_all,
+            [os.path.join(DATA_DIR, 'omniglot-val.tfrecord')],
+            shuffle=False,
+            repeat=False,
+            size=(28, 28, 1),
+            pad=(2, 2),
+            resize=(32, 32)),
     'mnist32_train_once':
         functools.partial(
             input_fn_record,
@@ -302,6 +462,16 @@ _DATASETS = {
             input_fn_record,
             _parser_all,
             [os.path.join(DATA_DIR, 'mnist-test.tfrecord')],
+            shuffle=False,
+            repeat=False,
+            size=(28, 28, 1),
+            pad=(2, 2),
+            resize=(32, 32)),
+    'mnist32_val':
+        functools.partial(
+            input_fn_record,
+            _parser_all,
+            [os.path.join(DATA_DIR, 'mnist-val.tfrecord')],
             shuffle=False,
             repeat=False,
             size=(28, 28, 1),

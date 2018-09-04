@@ -37,7 +37,10 @@ class ACAI(train.AE):
     def model(self, latent, depth, scales, advweight, advdepth, reg):
         x = tf.placeholder(tf.float32,
                            [None, self.height, self.width, self.colors], 'x')
-        l = tf.placeholder(tf.float32, [None, self.nclass], 'label')
+        if FLAGS.dataset == 'mnist32':
+            l = tf.placeholder(tf.float32, [None, self.nclass], 'label')
+        else:
+            l = tf.placeholder(tf.float32, [None], 'label')
         h = tf.placeholder(
             tf.float32,
             [None, self.height >> scales, self.width >> scales, latent], 'h')
@@ -75,10 +78,13 @@ class ACAI(train.AE):
         utils.HookReport.log_tensor(loss_ae_disc, 'loss_ae_disc')
         utils.HookReport.log_tensor(loss_disc_real, 'loss_disc_real')
 
-        xops = classifiers.single_layer_classifier(
-            tf.stop_gradient(encode), l, self.nclass)
-        xloss = tf.reduce_mean(xops.loss)
-        utils.HookReport.log_tensor(xloss, 'classify_latent')
+        if FLAGS.dataset == 'mnist32':
+            xops = classifiers.single_layer_classifier(
+                tf.stop_gradient(encode), l, self.nclass)
+            xloss = tf.reduce_mean(xops.loss)
+            utils.HookReport.log_tensor(xloss, 'classify_latent')
+        else:
+            xops = None
 
         update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
         ae_vars = tf.global_variables('ae_')
@@ -88,14 +94,23 @@ class ACAI(train.AE):
             train_ae = tf.train.AdamOptimizer(FLAGS.lr).minimize(
                 loss_ae + advweight * loss_ae_disc,
                 var_list=ae_vars)
-            train_d = tf.train.AdamOptimizer(FLAGS.lr).minimize(
-                loss_disc + loss_disc_real,
-                var_list=disc_vars)
-            train_xl = tf.train.AdamOptimizer(FLAGS.lr).minimize(
-                xloss, tf.train.get_global_step(), var_list=xl_vars)
-        ops = train.AEOps(x, h, l, encode, decode, ae,
-                          tf.group(train_ae, train_d, train_xl),
-                          classify_latent=xops.output)
+            if FLAGS.dataset == 'mnist32':
+                train_d = tf.train.AdamOptimizer(FLAGS.lr).minimize(
+                    loss_disc + loss_disc_real,
+                    var_list=disc_vars)
+                train_xl = tf.train.AdamOptimizer(FLAGS.lr).minimize(
+                    xloss, tf.train.get_global_step(), var_list=xl_vars)
+            else:
+                train_d = tf.train.AdamOptimizer(FLAGS.lr).minimize(
+                    loss_disc + loss_disc_real, tf.train.get_global_step(),
+                    var_list=disc_vars)
+        if FLAGS.dataset == 'mnist32':
+            ops = train.AEOps(x, h, l, encode, decode, ae,
+                              tf.group(train_ae, train_d, train_xl),
+                              classify_latent=xops.output)
+        else:
+            ops = train.AEOps(x, h, l, encode, decode, ae,
+                              tf.group(train_ae, train_d))
 
         n_interpolations = 16
         n_images_per_interpolation = 16

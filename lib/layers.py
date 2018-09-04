@@ -24,6 +24,7 @@ from __future__ import print_function
 import functools
 
 import tensorflow as tf
+import ipdb
 
 
 def downscale2d(x, n):

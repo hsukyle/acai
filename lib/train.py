@@ -386,7 +386,7 @@ class Classify(CustomModel):
                 while not sess.should_stop():
                     self.train_step(data_in, ops)
                     self.cur_nimg = batch_size * self.tf_sess.run(global_step)
-                    if self.cur_nimg % (report_kimg << 10) == 0:
+                    if (self.cur_nimg % (report_kimg << 10) == 0) and FLAGS.dataset == 'mnist32':
                         accuracy = self.eval_accuracy(ops, self.test_data,
                                                       'test')
                         run_op(test_accuracy_op, accuracy)

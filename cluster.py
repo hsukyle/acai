@@ -81,7 +81,7 @@ def cluster(train_latents, train_labels, test_latents, test_labels):
     return error(labels_hot, kmeans.predict(test_latents), k=num_classes)
 
 
-def get_latents_and_labels(sess, ops, dataset, batches=None):
+def get_images_and_latents_and_labels(sess, ops, dataset, batches=None):
     batch = FLAGS.batch
     with tf.Graph().as_default():
         data_in = dataset.make_one_shot_iterator().get_next()
@@ -105,7 +105,7 @@ def get_latents_and_labels(sess, ops, dataset, batches=None):
                for p in range(0, images.shape[0], FLAGS.batch)]
     latents = np.concatenate(latents, axis=0)
     latents = latents.reshape([latents.shape[0], -1])
-    return latents, labels
+    return images, latents, labels
 
 
 def main(argv):
@@ -116,17 +116,23 @@ def main(argv):
         ae.eval_mode()
 
     # Convert all test samples to latents and get the labels
-    test_latents, test_labels = get_latents_and_labels(ae.eval_sess,
+    val_images, val_latents, val_labels = get_images_and_latents_and_labels(ae.eval_sess,
+                                                     ae.eval_ops,
+                                                     ds.val)
+    print('Shape of val_labels = {}'.format(np.shape(val_labels)))
+    print('Shape of val_latents = {}'.format(np.shape(val_latents)))
+    test_images, test_latents, test_labels = get_images_and_latents_and_labels(ae.eval_sess,
                                                        ae.eval_ops,
                                                        ds.test)
     print('Shape of test_labels = {}'.format(np.shape(test_labels)))
     print('Shape of test_latents = {}'.format(np.shape(test_latents)))
-    train_latents, train_labels = get_latents_and_labels(ae.eval_sess,
+    train_images, train_latents, train_labels = get_images_and_latents_and_labels(ae.eval_sess,
                                                          ae.eval_ops,
                                                          ds.train_once,
                                                          60000)
     print('Shape of train_labels = {}'.format(np.shape(train_labels)))
     print('Shape of train_latents = {}'.format(np.shape(train_latents)))
+
     if not FLAGS.use_svd:
         acc = cluster(train_latents, train_labels, test_latents, test_labels)
         print('classification acc = {}'.format(acc))

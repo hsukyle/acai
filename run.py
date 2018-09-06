@@ -9,7 +9,7 @@ import argparse
 
 parser = argparse.ArgumentParser()
 parser.add_argument('target', type=str, help='filename of bash/python script to execute')
-parser.add_argument('--gpu_id', default=1, type=int, help='0: Titan X 1: Titan Xp 2: 1080 Ti (non-display) 3: 1080 Ti display')
+parser.add_argument('--gpu_id', default=0, type=int, help='0: Titan X 1: Titan Xp 2: 1080 Ti (non-display) 3: 1080 Ti display')
 parser.add_argument('--debug', action='store_true', help='pdb on error')
 parser.add_argument('--image', default='acai', type=str, help='docker image tag')
 args = parser.parse_args()

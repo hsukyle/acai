@@ -89,6 +89,13 @@ def _load_cifar10():
     test_set['images'] = _encode_png(unflatten(test_set['images']))
     return dict(train=train_set, test=test_set)
 
+def _load_vizdoom():
+    images = np.load('./data/vizdoom/map_500_100k_uint8.npy')
+    assert images.shape == (100000, 3, 100, 130)
+    assert images.dtype == np.uint8
+    images = np.transpose(images, [0, 2, 3, 1])
+    train_set = {'images': _encode_png(images), 'labels': np.zeros(len(images), int)}
+    return dict(train=train_set)
 
 def _load_celeba():
     with tempfile.NamedTemporaryFile() as f:
@@ -103,13 +110,13 @@ def _load_celeba():
     train_set = {'images': images, 'labels': np.zeros(len(images), int)}
     return dict(train=train_set)
 
-def _load_celeba84():
-    splits = collections.OrderedDict()
-    for split in ['train', 'val', 'test']:
-        data = np.load('./data/celeba/cropped/Img_resized84_cache/
-        images, labels = data['X'], data['Y']
-        splits[split] = {'images': _encode_png(images), 'labels': labels}
-    return splits
+# def _load_celeba84():
+#     splits = collections.OrderedDict()
+#     for split in ['train', 'val', 'test']:
+#         data = np.load('./data/celeba/cropped/Img_resized84_cache/
+#         images, labels = data['X'], data['Y']
+#         splits[split] = {'images': _encode_png(images), 'labels': labels}
+#     return splits
 
 def _load_mnist():
     def _read32(data):
@@ -191,7 +198,8 @@ LOADERS = [
     # ('mnist', _load_mnist),
     # ('omniglot', _load_omniglot)
     # ('miniimagenet', _load_miniimagenet)
-    ('cifar10', _load_cifar10),
+    # ('cifar10', _load_cifar10),
+    ('vizdoom', _load_vizdoom),
     # ('svhn', _load_svhn),
     # ('celeba', _load_celeba)
 ]

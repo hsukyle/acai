@@ -75,21 +75,31 @@ class HeModifiedNormalInitializer(tf.initializers.random_normal):
                        tf.cast(tf.reduce_prod(shape[:-1]), tf.float32))
         return tf.random_normal(shape, stddev=std, dtype=dtype)
 
-
 def encoder(x, scales, depth, latent, scope):
     activation = tf.nn.leaky_relu
     conv_op = functools.partial(
         tf.layers.conv2d, padding='same',
         kernel_initializer=HeModifiedNormalInitializer(0.2))
     with tf.variable_scope(scope, reuse=tf.AUTO_REUSE):
-        y = conv_op(x, depth, 1)
-        for scale in range(scales):
-            y = conv_op(y, depth << scale, 3, activation=activation)
-            y = conv_op(y, depth << scale, 3, activation=activation)
-            y = downscale2d(y, 2)
-        y = conv_op(y, depth << scales, 3, activation=activation)
-        y = conv_op(y, latent, 3)
-        return y
+        if scales == 3: # original paper architecture based on 32x32 images
+            y = conv_op(x, depth, 1)
+            for scale in range(scales):
+                y = conv_op(y, depth << scale, 3, activation=activation)
+                y = conv_op(y, depth << scale, 3, activation=activation)
+                y = downscale2d(y, 2)
+            y = conv_op(y, depth << scales, 3, activation=activation)
+            y = conv_op(y, latent, 3)
+            return y
+        else:
+            filters = [min(depth << scale, 512) for scale in range(scales)]
+            y = conv_op(x, depth, 1)
+            for scale in range(scales):
+                y = conv_op(y, filters[scale], 3, activation=activation)
+                y = conv_op(y, filters[scale], 3, activation=activation)
+                y = downscale2d(y, 2)
+            y = conv_op(y, filters[-1], 3, activation=activation)
+            y = conv_op(y, latent, 3)
+            return y
 
 
 def decoder(x, scales, depth, colors, scope):
@@ -99,10 +109,20 @@ def decoder(x, scales, depth, colors, scope):
         kernel_initializer=HeModifiedNormalInitializer(0.2))
     y = x
     with tf.variable_scope(scope, reuse=tf.AUTO_REUSE):
-        for scale in range(scales - 1, -1, -1):
-            y = conv_op(y, depth << scale, 3, activation=activation)
-            y = conv_op(y, depth << scale, 3, activation=activation)
-            y = upscale2d(y, 2)
-        y = conv_op(y, depth, 3, activation=activation)
-        y = conv_op(y, colors, 3)
-        return y
+        if scales == 3: # original paper architecture based on 32x32 images
+            for scale in range(scales - 1, -1, -1):
+                y = conv_op(y, depth << scale, 3, activation=activation)
+                y = conv_op(y, depth << scale, 3, activation=activation)
+                y = upscale2d(y, 2)
+            y = conv_op(y, depth, 3, activation=activation)
+            y = conv_op(y, colors, 3)
+            return y
+        else:
+            filters = [min(depth << scale, 512) for scale in range(scales)]
+            for scale in range(scales - 1, -1, -1):
+                y = conv_op(y, filters[scale], 3, activation=activation)
+                y = conv_op(y, filters[scale], 3, activation=activation)
+                y = upscale2d(y, 2)
+            y = conv_op(y, depth, 3, activation=activation)
+            y = conv_op(y, colors, 3)
+            return y

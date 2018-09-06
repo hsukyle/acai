@@ -33,7 +33,7 @@ import ipdb
 
 _DATA_CACHE = None
 
-DATA_DIR = './data/acai'
+DATA_DIR = './data'
 
 class DataSet(object):
 
@@ -177,7 +177,8 @@ def input_fn_record(record_parse_fn,
                     random_flip_x=False,
                     random_shift_x=0,
                     random_shift_y=0,
-                    limit=None):
+                    limit=None,
+                    random_crop_to_resize=False):
     """Creates a Dataset pipeline for tfrecord files.
 
     Args:
@@ -233,8 +234,13 @@ def input_fn_record(record_parse_fn,
         delta[1] += 2 * crop[1]
 
     if resize[0] - delta[0] != size[0] or resize[1] - delta[1] != size[1]:
-        dataset = dataset.map(
-            lambda x, y, x_orig: (tf.image.resize_bicubic([x], list(resize))[0], y, x_orig), 4)
+        ipdb.set_trace()
+        if random_crop_to_resize:
+            dataset = dataset.map(
+                lambda x, y, x_orig: (tf.random_crop(x, (resize[0], resize[1], size[-1])), y, x_orig), 4)
+        else:
+            dataset = dataset.map(
+                lambda x, y, x_orig: (tf.image.resize_bicubic([x], list(resize))[0], y, x_orig), 4)
     if shuffle:
         dataset = dataset.shuffle(shuffle)
     if random_flip_x:
@@ -260,9 +266,31 @@ _NCLASS = {
     'omniglot32': -1,
     'miniimagenet64': -1,
     'miniimagenet32': -1,
+    'vizdoom': -1,
 }
 
 _DATASETS = {
+    'vizdoom_train':
+        functools.partial(
+            input_fn_record,
+            _parser_all,
+            [os.path.join(DATA_DIR, 'vizdoom-train.tfrecord')],
+            size=(100, 130, 3),
+            resize=(96, 128)),
+    'vizdoom_val':
+        functools.partial(
+            input_fn_record,
+            _parser_all,
+            [os.path.join(DATA_DIR, 'vizdoom-train.tfrecord')],
+            size=(100, 130, 3),
+            resize = (96, 128)),
+    'vizdoom_test':
+        functools.partial(
+            input_fn_record,
+            _parser_all,
+            [os.path.join(DATA_DIR, 'vizdoom-train.tfrecord')],
+            size=(100, 130, 3),
+            resize=(96, 128)),
     'celeba32_train':
         functools.partial(
             input_fn_record,
@@ -321,7 +349,8 @@ _DATASETS = {
             _parser_all,
             [os.path.join(DATA_DIR, 'miniimagenet-train.tfrecord')],
             size=(84, 84, 3),
-            resize=(32, 32)),
+            resize=(32, 32),
+            random_crop_to_resize=True),
     'miniimagenet32_test':
         functools.partial(
             input_fn_record,
@@ -349,16 +378,15 @@ _DATASETS = {
             repeat=False,
             size=(84, 84, 3),
             resize=(32, 32)),
-    'miniimagenet64_train_orig':
+    'miniimagenet64_train':
         functools.partial(
             input_fn_record,
             _parser_all,
             [os.path.join(DATA_DIR, 'miniimagenet-train.tfrecord')],
-            repeat=False,
-            shuffle=False,
             size=(84, 84, 3),
-            resize=(84, 84)),
-    'miniimagenet64_test_orig':
+            resize=(64, 64),
+            random_crop_to_resize=True),
+    'miniimagenet64_test':
         functools.partial(
             input_fn_record,
             _parser_all,
@@ -366,8 +394,8 @@ _DATASETS = {
             shuffle=False,
             repeat=False,
             size=(84, 84, 3),
-            resize=(84, 84)),
-    'miniimagenet64_val_orig':
+            resize=(64, 64)),
+    'miniimagenet64_val':
         functools.partial(
             input_fn_record,
             _parser_all,
@@ -375,24 +403,8 @@ _DATASETS = {
             shuffle=False,
             repeat=False,
             size=(84, 84, 3),
-            resize=(84, 84)),
-    'miniimagenet64_train':
-        functools.partial(
-            input_fn_record,
-            _parser_all,
-            [os.path.join(DATA_DIR, 'miniimagenet-train.tfrecord')],
-            size=(84, 84, 3),
             resize=(64, 64)),
-    'miniimagenet64_test':
-        functools.partial(
-            input_fn_record,
-            _parser_all,
-            [os.path.join(DATA_DIR, 'miniimagenet-train.tfrecord')],
-            shuffle=False,
-            repeat=False,
-            size=(84, 84, 3),
-            resize=(64, 64)),
-    'miniimagenet64_val':
+    'miniimagenet64_train_once':
         functools.partial(
             input_fn_record,
             _parser_all,

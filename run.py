@@ -24,6 +24,7 @@ DOODAD_DIR = '~/install/doodad'
 DATA_DIR_MOUNT = './data'
 DATA_DIR_LOCAL = './data'
 THIS_FILE_DIR = os.path.realpath(os.path.dirname(__file__))
+CELEBA_DIR = './data/celeba'
 
 GPU_ID = args.gpu_id
 
@@ -50,6 +51,7 @@ mounts = [
     mount.MountLocal(local_dir=DOODAD_DIR, pythonpath=True),  # add doodad
     mount.MountLocal(local_dir=BASE_DIR_LOCAL, mount_point=BASE_DIR_MOUNT),
     mount.MountLocal(local_dir=DATA_DIR_LOCAL, mount_point=DATA_DIR_MOUNT),
+    mount.MountLocal(local_dir=CELEBA_DIR, mount_point=CELEBA_DIR),
     mount.MountLocal(local_dir=OUTPUT_DIR_LOCAL, mount_point=OUTPUT_DIR_MOUNT, output=True),   # output mount
 ]
 

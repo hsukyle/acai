@@ -30,6 +30,8 @@ import scipy.io
 import tensorflow as tf
 from lib.data import DATA_DIR
 from tqdm import trange, tqdm
+import ipdb
+from PIL import Image
 
 URLS = {
     'svhn': 'http://ufldl.stanford.edu/housenumbers/{}_32x32.mat',
@@ -110,13 +112,25 @@ def _load_celeba():
     train_set = {'images': images, 'labels': np.zeros(len(images), int)}
     return dict(train=train_set)
 
-# def _load_celeba84():
-#     splits = collections.OrderedDict()
-#     for split in ['train', 'val', 'test']:
-#         data = np.load('./data/celeba/cropped/Img_resized84_cache/
-#         images, labels = data['X'], data['Y']
-#         splits[split] = {'images': _encode_png(images), 'labels': labels}
-#     return splits
+def _load_celeba84():
+    celeba_dir = './data/celeba/cropped'
+    eval_filename = os.path.join(celeba_dir, 'Eval', 'list_eval_partition.txt')
+    with open(eval_filename, 'r') as f:
+        lines = f.readlines()
+    images, labels, splits = [], [], []
+    for line in tqdm(lines, 'Reading images'):
+        f, s = line.split()
+        labels.append(int(f[:f.find('.jpg')]))
+        filename = os.path.join(celeba_dir, 'Img_resized84', f)
+        image = np.array(Image.open(filename))
+        images.append(image)
+        splits.append(int(s))
+    images, labels, splits = np.stack(images, axis=0), np.array(labels), np.array(splits)
+    assert images[0].shape == (84, 84, 3)
+    dataset = collections.OrderedDict()
+    for i, split in enumerate(['train', 'val', 'test']):
+        dataset[split] = {'images': _encode_png(images[np.where(splits == i)]), 'labels': labels[np.where(splits == i)]}
+    return dataset
 
 def _load_mnist():
     def _read32(data):
@@ -199,9 +213,10 @@ LOADERS = [
     # ('omniglot', _load_omniglot)
     # ('miniimagenet', _load_miniimagenet)
     # ('cifar10', _load_cifar10),
-    ('vizdoom', _load_vizdoom),
+    # ('vizdoom', _load_vizdoom),
     # ('svhn', _load_svhn),
-    # ('celeba', _load_celeba)
+    # ('celeba', _load_celeba),
+    ('celeba', _load_celeba84)
 ]
 
 if __name__ == '__main__':

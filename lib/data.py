@@ -234,7 +234,6 @@ def input_fn_record(record_parse_fn,
         delta[1] += 2 * crop[1]
 
     if resize[0] - delta[0] != size[0] or resize[1] - delta[1] != size[1]:
-        ipdb.set_trace()
         if random_crop_to_resize:
             dataset = dataset.map(
                 lambda x, y, x_orig: (tf.random_crop(x, (resize[0], resize[1], size[-1])), y, x_orig), 4)
@@ -267,9 +266,44 @@ _NCLASS = {
     'miniimagenet64': -1,
     'miniimagenet32': -1,
     'vizdoom': -1,
+    'celeba64': -1,
 }
 
 _DATASETS = {
+    'celeba64_train':
+        functools.partial(
+            input_fn_record,
+            _parser_all,
+            [os.path.join(DATA_DIR, 'celeba-train.tfrecord')],
+            size=(84, 84, 3),
+            resize=(64, 64)),
+    'celeba64_test':
+        functools.partial(
+            input_fn_record,
+            _parser_all,
+            [os.path.join(DATA_DIR, 'celeba-test.tfrecord')],
+            shuffle=False,
+            repeat=False,
+            size=(84, 84, 3),
+            resize=(64, 64)),
+    'celeba64_val':
+        functools.partial(
+            input_fn_record,
+            _parser_all,
+            [os.path.join(DATA_DIR, 'celeba-val.tfrecord')],
+            shuffle=False,
+            repeat=False,
+            size=(84, 84, 3),
+            resize=(64, 64)),
+    'celeba64_train_once':
+        functools.partial(
+            input_fn_record,
+            _parser_all,
+            [os.path.join(DATA_DIR, 'celeba-train.tfrecord')],
+            shuffle=False,
+            repeat=False,
+            size=(84, 84, 3),
+            resize=(64, 64)),
     'vizdoom_train':
         functools.partial(
             input_fn_record,

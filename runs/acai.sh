@@ -36,6 +36,8 @@ acai.py --dataset=omniglot32 --latent_width=4 --depth=16 --latent=16 --train_dir
 acai.py --dataset=miniimagenet64 --latent_width=4 --depth=64 --latent=64 --train_dir=./log --batch 64 # didn't work, ae loss diverged
 acai.py --dataset=miniimagenet32 --latent_width=4 --depth=64 --latent=64 --train_dir=./log
 acai.py --dataset=miniimagenet64 --latent_width=4 --depth=64 --latent=16 --train_dir=./log
+acai.py --dataset=miniimagenet64 --latent_width=4 --depth=64 --latent=16 --train_dir=./log --advweight=0.1
+acai.py --dataset=miniimagenet64 --latent_width=4 --depth=64 --latent=32 --train_dir=./log
 
 acai.py --dataset=vizdoom --latent_width=4 --depth=64 --latent=16 --train_dir=./log # objects weren't reconstructed
 acai.py --dataset=vizdoom --latent_width=4 --depth=64 --latent=64 --train_dir=./log

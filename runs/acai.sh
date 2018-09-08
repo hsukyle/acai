@@ -41,3 +41,6 @@ acai.py --dataset=miniimagenet64 --latent_width=4 --depth=64 --latent=32 --train
 
 acai.py --dataset=vizdoom --latent_width=4 --depth=64 --latent=16 --train_dir=./log # objects weren't reconstructed
 acai.py --dataset=vizdoom --latent_width=4 --depth=64 --latent=64 --train_dir=./log
+
+acai.py --dataset=celeba64 --latent_width=4 --depth=64 --latent=16 --train_dir=./log
+acai.py --dataset=celeba64 --latent_width=4 --depth=64 --latent=8 --train_dir=./log

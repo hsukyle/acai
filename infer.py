@@ -44,17 +44,6 @@ def get_images_and_latents_and_labels(sess, ops, dataset, batches=None):
     return images_orig, latents, labels
 
 
-def unshift_and_unscale_all(images):
-    assert images.dtype == np.float16 or images.dtype == np.float32 or images.dtype == np.float64
-
-    images = np.clip(np.round((images + 1) * 255 / 2), 0, 255).astype(np.uint8)
-    return images
-
-def unpad(images, pad=2):
-    assert images.shape[1] == images.shape[2] == 32
-    assert np.sum(images) == np.sum(images[:,pad:-pad,pad:-pad,:])
-    return images[:,pad:-pad,pad:-pad,:]
-
 def save_split(split, X, Y, Z, ae):
     assert X.shape[0] == Y.shape[0] == Z.shape[0]
     assert X.dtype == np.uint8
@@ -63,7 +52,7 @@ def save_split(split, X, Y, Z, ae):
     dataset = FLAGS.dataset[:-2]
     assert model in ['acai', 'aae', 'vqvae']
     assert dataset in ['mnist', 'celeba', 'miniimagenet', 'omniglot']
-    np.savez('./data/{}_encodings/{}_{}_{}.npz'.format(model, dataset, Z.shape[-1], split), X=X, Y=Y, Z=Z)
+    np.savez('./data/{}_{}_{}.npz'.format(dataset, Z.shape[-1], split), X=X, Y=Y, Z=Z)
 
 
 
@@ -87,8 +76,7 @@ def main(argv):
     print('Shape of test_latents = {}'.format(np.shape(test_latents)))
     train_images, train_latents, train_labels = get_images_and_latents_and_labels(ae.eval_sess,
                                                                                   ae.eval_ops,
-                                                                                  ds.train_once,
-                                                                                  60000)
+                                                                                  ds.train_once)
     print('Shape of train_labels = {}'.format(np.shape(train_labels)))
     print('Shape of train_latents = {}'.format(np.shape(train_latents)))
 

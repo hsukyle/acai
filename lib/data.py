@@ -271,6 +271,7 @@ _NCLASS = {
     'miniimagenet32': -1,
     'vizdoom': -1,
     'celeba64': -1,
+    'miniimagenetgray64': -1,
 }
 
 _DATASETS = {

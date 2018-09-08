@@ -44,3 +44,6 @@ acai.py --dataset=vizdoom --latent_width=4 --depth=64 --latent=64 --train_dir=./
 
 acai.py --dataset=celeba64 --latent_width=4 --depth=64 --latent=16 --train_dir=./log
 acai.py --dataset=celeba64 --latent_width=4 --depth=64 --latent=8 --train_dir=./log
+
+acai.py --dataset=miniimagenetgray64 --latent_width=4 --depth=64 --latent=16 --train_dir=./log --advweight=0.1
+acai.py --dataset=miniimagenetgray64 --latent_width=4 --depth=64 --latent=16 --train_dir=./log

@@ -218,7 +218,6 @@ def input_fn_record(record_parse_fn,
         dataset = dataset.map(
             lambda x, y, x_orig: (tf.image.rgb_to_grayscale(x), y, x_orig))
         size = (size[0], size[1], 1)
-    ipdb.set_trace()
     if limit is not None:
         if limit > 0:
             dataset = dataset.take(limit)

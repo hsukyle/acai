@@ -178,7 +178,8 @@ def input_fn_record(record_parse_fn,
                     random_shift_x=0,
                     random_shift_y=0,
                     limit=None,
-                    random_crop_to_resize=False):
+                    random_crop_to_resize=False,
+                    grayscale=False):
     """Creates a Dataset pipeline for tfrecord files.
 
     Args:
@@ -213,6 +214,9 @@ def input_fn_record(record_parse_fn,
         raise ValueError('Empty dataset, did you mount gcsfuse bucket?')
     dataset = tf.data.TFRecordDataset(filenames)
     dataset = dataset.map(record_parse_fn, max(4, batch_size // 4))
+    if grayscale:
+        dataset = dataset.map(
+            lambda x, y, x_orig: (tf.image.rgb_to_grayscale(x), y, x_orig))
     if limit is not None:
         if limit > 0:
             dataset = dataset.take(limit)
@@ -412,6 +416,45 @@ _DATASETS = {
             repeat=False,
             size=(84, 84, 3),
             resize=(32, 32)),
+    'miniimagenetgray64_train':
+        functools.partial(
+            input_fn_record,
+            _parser_all,
+            [os.path.join(DATA_DIR, 'miniimagenet-train.tfrecord')],
+            size=(84, 84, 3),
+            resize=(64, 64),
+            random_crop_to_resize=True,
+            grayscale=True),
+    'miniimagenetgray64_test':
+        functools.partial(
+            input_fn_record,
+            _parser_all,
+            [os.path.join(DATA_DIR, 'miniimagenet-test.tfrecord')],
+            shuffle=False,
+            repeat=False,
+            size=(84, 84, 3),
+            resize=(64, 64),
+            grayscale=True),
+    'miniimagenetgray64_val':
+        functools.partial(
+            input_fn_record,
+            _parser_all,
+            [os.path.join(DATA_DIR, 'miniimagenet-val.tfrecord')],
+            shuffle=False,
+            repeat=False,
+            size=(84, 84, 3),
+            resize=(64, 64),
+            grayscale=True),
+    'miniimagenetgray64_train_once':
+        functools.partial(
+            input_fn_record,
+            _parser_all,
+            [os.path.join(DATA_DIR, 'miniimagenet-train.tfrecord')],
+            shuffle=False,
+            repeat=False,
+            size=(84, 84, 3),
+            resize=(64, 64),
+            grayscale=True),
     'miniimagenet64_train':
         functools.partial(
             input_fn_record,

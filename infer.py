@@ -51,7 +51,7 @@ def save_split(split, X, Y, Z, ae):
     model = ae.__class__.__name__.lower()
     dataset = FLAGS.dataset[:-2]
     assert model in ['acai', 'aae', 'vqvae']
-    assert dataset in ['mnist', 'celeba', 'miniimagenet', 'omniglot']
+    assert dataset in ['mnist', 'celeba', 'miniimagenet', 'omniglot', 'miniimagenetgray']
     np.savez('./data/{}_{}_{}.npz'.format(dataset, Z.shape[-1], split), X=X, Y=Y, Z=Z)
 
 
